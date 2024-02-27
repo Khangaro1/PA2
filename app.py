@@ -1,58 +1,51 @@
-from flask import Flask, request, redirect, url_for, render_template, flash
-from werkzeug.utils import secure_filename
+from flask import Flask, request, render_template, redirect, url_for
 import subprocess
 import os
-import logging
+import tempfile
+import time  # for introducing delay
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'
-UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'txt', 'cpp', 'c'}
-
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
     if request.method == 'POST':
-        # Check if the post request has the file part
         if 'file' not in request.files:
-            flash('No file part')
             return redirect(request.url)
         file = request.files['file']
-        # If user does not select file, browser also
-        # submit an empty part without filename
         if file.filename == '':
-            flash('No selected file')
             return redirect(request.url)
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)  # Always secure the filename
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
-            app.logger.info(f'Received file: {filename}')  # Log the received file
-            result = compile_and_execute(filepath)
-            return render_template('result.html', result=result)
+        if file and file.filename.endswith('.cc'):
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.cc') as temp:
+                file.save(temp.name)
+                # Ensure file is saved and closed before proceeding
+                temp.close()
+                compile_result = compile_and_execute(temp.name)
+                # Attempt to delete the file with a delay
+                time.sleep(1)  # Delay to give time for the OS to release any locks
+                try:
+                    os.unlink(temp.name)
+                except PermissionError as e:
+                    print(f"Error deleting file: {e}")
+                return render_template('results.html', result=compile_result)
     return render_template('upload.html')
 
 def compile_and_execute(filepath):
-    compile_cmd = f"/usr/bin/g++ {filepath}"
-    run_cmd = "./compile_and_run.sh"
-    try:
-        # Ensure stdout and stderr are captured for decoding
-        compile_process = subprocess.run(compile_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        # Assuming your script outputs the result to stdout
-        run_process = subprocess.run(run_cmd, shell=True, capture_output=True, check=True)
-        output = run_process.stdout.decode()
-    except subprocess.CalledProcessError as e:
-        # Safely decode stderr or stdout, checking if they are not None
-        error_message = e.stderr.decode() if e.stderr else "Unknown error"
-        output = f"An error occurred: {error_message}"
-    return output
+    compile_cmd = f"g++ {filepath} -o {filepath}.out"
+    test_script = "./walk.cc_test.sh"
+    compile_process = subprocess.run(compile_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if compile_process.returncode != 0:
+        return "Compilation failed."
+    
+    # Ensure compilation output file is generated before grading
+    if os.path.exists(f"{filepath}.out"):
+        grading_process = subprocess.run(test_script, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if grading_process.returncode == 0:
+            score = grading_process.stdout.decode().strip()
+            return f"Score: {score} out of 2 correct."
+        else:
+            return "An error occurred during grading."
+    else:
+        return "Compilation succeeded but executable was not created."
 
 if __name__ == '__main__':
     app.run(debug=True)
