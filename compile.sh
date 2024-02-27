@@ -12,4 +12,3 @@ print ("Score: " + str(retcode) + " out of 2 correct.")
 print("*************Original submission*************")
 with open('uploads/walk.cc','r') as fs:
 print(fs.read())
-
