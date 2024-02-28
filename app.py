@@ -41,5 +41,4 @@ def upload_file():
     return redirect(url_for('upload_form'))
 
 if __name__ == "__main__":
-    app.secret_key = 'super_secret_key'
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))

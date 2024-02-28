@@ -6,6 +6,9 @@ WORKDIR /usr/src/app
 # copy all the files to the container
 COPY . .
 
+# give permissions to compile.sh
+RUN chmod +x compile.sh
+
 # install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -14,3 +17,4 @@ EXPOSE 5000
 
 # run the command
 CMD ["python", "./app.py"]
+
