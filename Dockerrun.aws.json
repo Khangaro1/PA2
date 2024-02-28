@@ -1,7 +1,7 @@
 {
     "AWSEBDockerrunVersion": "1",
     "Image": {
-      "Name": "khangaro1/PA2",
+      "Name": "khangaro/autograder",
       "Update": "true"
     },
     "Ports": [
