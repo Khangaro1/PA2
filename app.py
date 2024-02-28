@@ -28,11 +28,13 @@ def upload_file():
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        # Modified to capture output
-        result = subprocess.run("./compile.sh", shell=True, capture_output=True, text=True)
+
+        result = subprocess.run("compile.sh", shell=True, capture_output=True, text=True)
         output = result.stdout  # Capturing the standard output
         if result.stderr:  # Optionally handle standard error
             output += "\nErrors:\n" + result.stderr
+        #Output test 
+        # output = "This is a test output. If you see this, data passing to template works!"
         # Pass the output to the template
         return render_template('results.html', output=output)
 
